@@ -60,9 +60,13 @@ namespace WebApplication
 
                 workbookPart.Workbook.Save();
 
+                var rowCount = 1;
+                uint rowStyleIndex = 2;
 
                 SheetData sheetData = worksheetPart.Worksheet.AppendChild(new SheetData());
 
+            var mergeCells = new MergeCells();
+            var hyperlinks = new Hyperlinks();
                 // Constructing header
                 Row row = new Row();
 
@@ -73,10 +77,20 @@ namespace WebApplication
 
                 // Insert the header row to the Sheet Data
                 sheetData.AppendChild(row);
-
+            rowCount++;
                 // Inserting each employee
                 foreach (var user in Users)
                 {
+                    mergeCells.Append(new MergeCell() { Reference = new StringValue($"A{rowCount}:C{rowCount}") });
+
+                rowStyleIndex = rowStyleIndex == UInt32Value.FromUInt32(2) ? UInt32Value.FromUInt32(3) : UInt32Value.FromUInt32(2);
+
+                if(!string.IsNullOrEmpty(user.UserName))
+                {
+                    hyperlinks.Append(new Hyperlink() { Reference = $"B{rowCount}", Id = $"UNIQUE{rowCount}", Tooltip = user.UserName });
+                    worksheetPart.AddHyperlinkRelationship(new Uri(user.UserName, UriKind.RelativeOrAbsolute), true, $"UNIQUE{rowCount}");
+                }
+
                     row = new Row();
 
                 row.Append(
@@ -85,10 +99,13 @@ namespace WebApplication
                     ConstructCell(user.Password, CellValues.String, 1));
 
                     sheetData.AppendChild(row);
+                rowCount++;
                 }
+            worksheetPart.Worksheet.InsertAfter(hyperlinks, worksheetPart.Worksheet.Elements<SheetData>().First());
+            worksheetPart.Worksheet.InsertAfter(mergeCells, worksheetPart.Worksheet.Elements<SheetData>().First());
 
-                document.Clone(stream);
                 worksheetPart.Worksheet.Save();
+            document.Clone(stream);
 
             return stream.ToArray();
         }
@@ -149,6 +166,12 @@ namespace WebApplication
                 new Font( // Index 1 - header
                     new FontSize() { Val = 14 },
                     new Bold(),
+                    new Color() { Rgb = "ffffff" }
+
+                ),
+                new Font( // Index 1 - header
+                    new FontSize() { Val = 10 },
+                    new Underline(),
                     new Color() { Rgb = "ffffff" }
 
                 ));
